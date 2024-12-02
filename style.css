@@ -88,7 +88,7 @@ body {
 }
 
 .scale-button:disabled {
-  color: #afaaaf;
+  color: #d6cece;
 }
 
 .scale-button-divider {
@@ -110,7 +110,12 @@ body {
   width: 100%;
 }
 
-.fileupload:hover {
+.big-button:hover {
+  filter: brightness(90%);
+}
+
+.big-button:disabled {
+  color: #d6cece;
   filter: brightness(90%);
 }
 

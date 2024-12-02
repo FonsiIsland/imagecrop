@@ -8,6 +8,7 @@ let cropMaskRatios = [[16,9],[20,10],[10,10],[36,11],[27,6]]
 let selectedRatioIndex = 0;
 let maskScale = 1;
 let maskScaleStop = false;
+let resizeFactor = 1;
 
 let zoomScale = 1;
 
@@ -55,6 +56,10 @@ function setup() {
     //    var file = e.target.files[0]; 
     //    handleImage(file);
     // }
+
+    document.getElementById("zoomScaleAdd").disabled = true;
+    document.getElementById("zoomScaleRemove").disabled = true;
+    document.getElementById("filedownload").disabled = true;
 
 
     //let croped = img.get(100, 100, img.width-100, img.height-100);
@@ -148,6 +153,9 @@ const updateOverallScale = () => {
   if(mimicedImg)
     posY = posY / (mimicedImg.height / mimicedImg.width * oldCavnasWidth) * (mimicedImg.height / mimicedImg.width * canvasWidth);
 
+
+  // change mask size on window resize
+
 }
 
 const setOverallScale = (relativeScalefactor) => {
@@ -218,7 +226,12 @@ console.log(file)
 
   if (file.type === 'image') {
     imageLoading = true;
-    originalImg = loadImage(file.data, () => cropMask());
+
+    document.getElementById("zoomScaleAdd").disabled = true;
+    document.getElementById("zoomScaleRemove").disabled = true;
+    document.getElementById("filedownload").disabled = true;
+
+    originalImg = loadImage(file.data, () => handleImageLoaded());
   } else {
     originalImg = null;
   }
@@ -229,8 +242,13 @@ function changeMask(index) {
   maskScale = 1;
 }
 
-function cropMask() {
+function handleImageLoaded() {
   imageLoading = false;
+
+  document.getElementById("zoomScaleAdd").disabled = false;
+  document.getElementById("zoomScaleRemove").disabled = false;
+  document.getElementById("filedownload").disabled = false;
+
   posX = canvasWidth/2
   posY = (originalImg.height / originalImg.width * canvasWidth)/2
   maskScale = 1
