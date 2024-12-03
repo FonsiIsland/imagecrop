@@ -25,6 +25,8 @@ let imageLoading = true;
 var defaulCanvasWidth = 1200;
 var canvasWidth;
 
+var limitExport = true;
+
 var croppedImage;
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1 MB in Bytes
@@ -60,7 +62,8 @@ function setup() {
     document.getElementById("zoomScaleAdd").disabled = true;
     document.getElementById("zoomScaleRemove").disabled = true;
     document.getElementById("filedownload").disabled = true;
-
+    document.querySelectorAll('.mdc-radio__native-control').forEach((radio) => radio.disabled = true);
+    document.querySelectorAll('.mdc-checkbox__native-control').forEach((radio) => radio.disabled = true);
 
     //let croped = img.get(100, 100, img.width-100, img.height-100);
     //image(croped, 100,100);  
@@ -176,6 +179,8 @@ const setOverallScale = (relativeScalefactor) => {
       updateOverallScale();
     }
   }
+
+  document.getElementById('zoomScaleLabel').innerHTML = `${Math.round(zoomScale*100)}%`
 }
 
 function windowResized() {
@@ -206,12 +211,12 @@ function mouseWheel(event) {
     if(mouseX > 0 && mouseX <= canvasWidth && mouseY > 0 && mouseY <= (originalImg.height / originalImg.width * canvasWidth)){
       if (event.delta < 0) {
         if(maskScale > 1.0)
-          maskScale -= 0.1;
+          maskScale -= 0.05;
       } else {
         if(maskScaleStop) return;
     
         if(maskScale < 8)
-          maskScale += 0.1;
+          maskScale += 0.05;
       }
     
       console.log(maskScale);
@@ -230,6 +235,8 @@ console.log(file)
     document.getElementById("zoomScaleAdd").disabled = true;
     document.getElementById("zoomScaleRemove").disabled = true;
     document.getElementById("filedownload").disabled = true;
+    document.querySelectorAll('.mdc-radio__native-control').forEach((radio) => radio.disabled = true);
+    document.querySelectorAll('.mdc-checkbox__native-control').forEach((radio) => radio.disabled = true);
 
     originalImg = loadImage(file.data, () => handleImageLoaded());
   } else {
@@ -248,6 +255,8 @@ function handleImageLoaded() {
   document.getElementById("zoomScaleAdd").disabled = false;
   document.getElementById("zoomScaleRemove").disabled = false;
   document.getElementById("filedownload").disabled = false;
+  document.querySelectorAll('.mdc-radio__native-control').forEach((radio) => radio.disabled = false);
+  document.querySelectorAll('.mdc-checkbox__native-control').forEach((radio) => radio.disabled = false);
 
   posX = canvasWidth/2
   posY = (originalImg.height / originalImg.width * canvasWidth)/2
@@ -259,6 +268,8 @@ const downloadFile = () => {
     
   var factor = originalImg.width/canvasWidth;
   croppedImage = originalImg.get((posX - rectWidth / 2)*factor, (posY - rectHeight / 2)*factor, rectWidth*factor, rectHeight*factor);
+
+  if(limitExport) {
 
   for(var i = 0; i <=5; i++) {
     console.log("Iteration Count: " + i)
@@ -275,25 +286,32 @@ const downloadFile = () => {
       break;
     }
   }
+
+  }else {
+    const dataUrl = croppedImage.canvas.toDataURL("image/jpeg", QUALITY);
+    currentBlob = dataURItoBlob(dataUrl);
+    console.log(`Blob-Größe: ${currentBlob.size} Bytes`);
+  }
+
   saveBlob(currentBlob, "Scaled Image.jpg")
 
   console.log("Bild finalisiert!");
 }
 
-function keyPressed() {
-  if(key === 'b') {
-    downloadFile();
-  }else if(key==='k'){
-    let currentBlob;
+// function keyPressed() {
+//   if(key === 'b') {
+//     downloadFile();
+//   }else if(key==='k'){
+//     let currentBlob;
 
-    var factor = originalImg.width/canvasWidth;
-    croppedImage = originalImg.get((posX - rectWidth / 2)*factor, (posY - rectHeight / 2)*factor, rectWidth*factor, rectHeight*factor);
+//     var factor = originalImg.width/canvasWidth;
+//     croppedImage = originalImg.get((posX - rectWidth / 2)*factor, (posY - rectHeight / 2)*factor, rectWidth*factor, rectHeight*factor);
 
-    const dataUrl = croppedImage.canvas.toDataURL("image/jpeg", QUALITY);
-    currentBlob = dataURItoBlob(dataUrl);
-    console.log(`Blob-Größe: ${currentBlob.size} Bytes`);
-  }
-}
+//     const dataUrl = croppedImage.canvas.toDataURL("image/jpeg", QUALITY);
+//     currentBlob = dataURItoBlob(dataUrl);
+//     console.log(`Blob-Größe: ${currentBlob.size} Bytes`);
+//   }
+// }
 
 const resizeImage = (fileSize, img) => {
   let scaleFactor = Math.sqrt(MAX_FILE_SIZE / fileSize);
@@ -332,4 +350,9 @@ const saveBlob = (blob, fileName) => {
   a.download = fileName;
   a.click();
   window.URL.revokeObjectURL(url);
+}
+
+
+const toggleExportSize = (val) => {
+  limitExport = val.checked;
 }

@@ -7,12 +7,13 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.js"></script>
     <script src="source.js"></script>
-    <link rel="stylesheet" href="style.css">
-
+    
     <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
     <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
-   
+    
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    
+    <link rel="stylesheet" href="style.css">
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-CNCCF7HJFG"></script>
@@ -28,54 +29,127 @@
     <div class="container">
         <div class="side-menu">
             <div class="side-container">
-                <button id="fileupload" class="big-button" onclick="openInput()">
+
+                <div class="logo">
+                    <span class="material-icons">photo_camera</span>
+                    <span>Image-Cropping</span>
+                </div>
+
+                <button id="fileupload" class="big-button drop-shadow" onclick="openInput()">
                     <span class="material-icons">
                         upload_file
                     </span>
                     <span>Bild hochladen</span>
                 </button>
-            
-            <button onclick="changeMask(0)">16:9</button>
-            <button onclick="changeMask(1)">2:1</button>
-            <button onclick="changeMask(2)">1:1</button>
-            <button onclick="changeMask(3)">36:11</button>
-            <button onclick="changeMask(4)">9:2</button>
 
-            <button id="filedownload" class="big-button" onclick="downloadFile()">
-                <span class="material-icons">
-                    content_cut
-                </span>
-                <span>BIld herunterladen</span>
-            </button>
-        </div>
+                <div class="properties drop-shadow">
+
+                    <div class="group-container">
+                        <span>Maske:</span>
+                        <div class="mdc-form-field">
+                            <div class="mdc-radio">
+                                <input class="mdc-radio__native-control" type="radio" id="mask-radio-1" name="masks" onchange="changeMask(0);" value="0" checked>
+                                <div class="mdc-radio__background">
+                                    <div class="mdc-radio__outer-circle"></div>
+                                    <div class="mdc-radio__inner-circle"></div>
+                                </div>
+                                <div class="mdc-radio__ripple"></div>
+                            </div>
+                            <label class="mask-radio-label" for="mask-radio-1">Verwendung | 16:9</label>
+                        </div>
+                        <div class="mdc-form-field">
+                            <div class="mdc-radio">
+                            <input class="mdc-radio__native-control" type="radio" id="mask-radio-2" name="masks" onchange="changeMask(1);" value="1" >
+                            <div class="mdc-radio__background">
+                                <div class="mdc-radio__outer-circle"></div>
+                                <div class="mdc-radio__inner-circle"></div>
+                            </div>
+                            <div class="mdc-radio__ripple"></div>
+                        </div>
+                        <label class="mask-radio-label" for="mask-radio-2">Verwendung | 2:1</label>
+                        </div>
+                        <div class="mdc-form-field">
+                            <div class="mdc-radio">
+                            <input class="mdc-radio__native-control" type="radio" id="mask-radio-3" name="masks" onchange="changeMask(2);" value="2" >
+                            <div class="mdc-radio__background">
+                                <div class="mdc-radio__outer-circle"></div>
+                                <div class="mdc-radio__inner-circle"></div>
+                            </div>
+                            <div class="mdc-radio__ripple"></div>
+                        </div>
+                        <label class="mask-radio-label" for="mask-radio-3">Verwendung | 1:1</label>
+                        </div>
+                        <div class="mdc-form-field">
+                            <div class="mdc-radio">
+                            <input class="mdc-radio__native-control" type="radio" id="mask-radio-4" name="masks" onchange="changeMask(3);" value="3" >
+                            <div class="mdc-radio__background">
+                                <div class="mdc-radio__outer-circle"></div>
+                                <div class="mdc-radio__inner-circle"></div>
+                            </div>
+                            <div class="mdc-radio__ripple"></div>
+                        </div>
+                        <label class="mask-radio-label" for="mask-radio-4">Verwendung | 36:11</label>
+                        </div>
+                        <div class="mdc-form-field">
+                            <div class="mdc-radio">
+                            <input class="mdc-radio__native-control" type="radio" id="mask-radio-5" name="masks" onchange="changeMask(4);" value="4" >
+                            <div class="mdc-radio__background">
+                                <div class="mdc-radio__outer-circle"></div>
+                                <div class="mdc-radio__inner-circle"></div>
+                            </div>
+                            <div class="mdc-radio__ripple"></div>
+                        </div>
+                        <label class="mask-radio-label" for="mask-radio-5">Verwendung | 9:2</label>
+                        </div>
+                    </div>
+
+                    <div class="properties-divider"></div>
+
+                    <div class="group-container">
+                        <span>Einstellungen:</span>
+                        <div class="mdc-form-field">
+                            <div class="mdc-checkbox">
+                            <input type="checkbox"
+                                    class="mdc-checkbox__native-control"
+                                    id="limit-download-size" onchange="toggleExportSize(this)" checked/>
+                            <div class="mdc-checkbox__background">
+                                <svg class="mdc-checkbox__checkmark"
+                                    viewBox="0 0 24 24">
+                                <path class="mdc-checkbox__checkmark-path"
+                                        fill="none"
+                                        d="M1.73,12.91 8.1,19.28 22.79,4.59"/>
+                                </svg>
+                                <div class="mdc-checkbox__mixedmark"></div>
+                            </div>
+                            <div class="mdc-checkbox__ripple"></div>
+                            </div>
+                            <label for="limit-download-size">Bild auf 1 MB skalieren</label>
+                        </div>
+                    </div>
+
+                </div>
+
+                <button id="filedownload" class="big-button drop-shadow" onclick="downloadFile()">
+                    <span class="material-icons">
+                        content_cut
+                    </span>
+                    <span>BIld herunterladen</span>
+                </button>
+            </div>
         </div>
         <div class="divider"></div>
         <div class="main-content">
-            <!-- <div class="canvas-container"> -->
-                <!-- <div class="space-container"></div> -->
                 <div id="sketch-holder"></div>
-                <!-- <div class="space-container"></div> -->
-            <!-- </div> -->
-            <div class="scale-button-container">
-                <!-- <button class="scale-button" onclick="setOverallScale(0.1)">+</button>
-                <button class="scale-button" onclick="setOverallScale(-0.1)">-</button>
-                <button class="mdc-fab mdc-fab--mini" aria-label="zoom +">
-                    <div class="mdc-fab__ripple"></div>
-                    <span class="mdc-fab__icon material-icons">+</span>
-                  </button>
-                  <button class="mdc-fab mdc-fab--mini" aria-label="zoom -">
-                    <div class="mdc-fab__ripple"></div>
-                    <span class="mdc-fab__icon material-icons">-</span>
-                  </button> -->
-
+            <div class="scale-button-container drop-shadow">
                 <button id="zoomScaleAdd" class="scale-button" onclick="setOverallScale(0.1)">
                     <span class="material-icons">add</span>
                 </button>
                 <div class="scale-button-divider"></div>
+                <span id="zoomScaleLabel" class="scale-label">100%</span>
+                <div class="scale-button-divider"></div>
                 <button id="zoomScaleRemove" class="scale-button" onclick="setOverallScale(-0.1)">
                     <span class="material-icons">remove</span>
                 </button>
-
             </div>
         </div>
     </div>
