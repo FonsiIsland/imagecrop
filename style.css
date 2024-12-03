@@ -177,3 +177,32 @@ body {
   width: 100%;
   background: #e0e0e0;
 }
+
+.author-container {
+  position: absolute;
+  left: 20px;
+  bottom: 10px;
+  width: auto;
+  height: 40px;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: start;
+  align-items: center;
+  gap: 8px;
+
+  color: #575656;
+
+  text-decoration: none;
+}
+
+.author-container a,
+.author-container img {
+  width: 25px;
+  height: 25px;
+}
+
+.author-container span {
+  font-size: 16px;
+  line-height: 16px;
+}

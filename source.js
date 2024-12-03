@@ -145,7 +145,9 @@ function draw() {
     
     cursor('default')
 
-    if(mouseX > rectX && mouseX < rectX+rectWidth) {
+    if(mouseX > rectX && mouseX < rectX+rectWidth && mouseY > rectY && mouseY < rectY+rectHeight) {
+      cursor('grab')
+    }else if(mouseX > rectX && mouseX < rectX+rectWidth) {
       if(mouseY > rectY-2 && mouseY < rectY){
         cursor('row-resize');
       }else if(mouseY > rectY+rectHeight && mouseY < rectY+rectHeight+2){
@@ -158,9 +160,6 @@ function draw() {
         cursor('col-resize');
       }
     }
-
-
-
 
     if (move) {
     
