@@ -26,7 +26,7 @@ var defaulCanvasWidth = 1200;
 var canvasWidth;
 
 var limitExport = true;
-
+var imageName = "Scaled Image.jpg";
 var croppedImage;
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1 MB in Bytes
@@ -232,6 +232,8 @@ console.log(file)
   if (file.type === 'image') {
     imageLoading = true;
 
+    imageName = file.name.replace(".jpeg", "").replace(".png","").replace(".jpg", "") + " - Skaliert.jpg";
+
     document.getElementById("zoomScaleAdd").disabled = true;
     document.getElementById("zoomScaleRemove").disabled = true;
     document.getElementById("filedownload").disabled = true;
@@ -293,7 +295,7 @@ const downloadFile = () => {
     console.log(`Blob-Größe: ${currentBlob.size} Bytes`);
   }
 
-  saveBlob(currentBlob, "Scaled Image.jpg")
+  saveBlob(currentBlob, imageName);
 
   console.log("Bild finalisiert!");
 }
