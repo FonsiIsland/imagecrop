@@ -135,6 +135,33 @@ function draw() {
     rect(rectX + rectWidth, rectY, width - (rectX + rectWidth), rectHeight); // Rechts vom sichtbaren Bereich
     rect(0, rectY + rectHeight, width, height - (rectY + rectHeight)); // Unterhalb des sichtbaren Bereichs
 
+    fill(color('#cb99c9')); // Dunkelgrau mit Transparenz
+    rect(rectX, rectY-2, rectWidth, 2); // Oben
+    rect(rectX, rectY+rectHeight, rectWidth, 2); // Unten
+    
+    rect(rectX-2, rectY-2, 2, rectHeight + 4); // Links
+    rect(rectX+rectWidth, rectY-2, 2, rectHeight +4); // Rechts
+
+    
+    cursor('default')
+
+    if(mouseX > rectX && mouseX < rectX+rectWidth) {
+      if(mouseY > rectY-2 && mouseY < rectY){
+        cursor('row-resize');
+      }else if(mouseY > rectY+rectHeight && mouseY < rectY+rectHeight+2){
+        cursor('row-resize');
+      }
+    }else if(mouseY > rectY && mouseY < rectY+rectHeight) {
+      if(mouseX > rectX-2 && mouseX < rectX){
+        cursor('col-resize');
+      }else if(mouseX > rectX+rectWidth && mouseX < rectX+rectWidth+2){
+        cursor('col-resize');
+      }
+    }
+
+
+
+
     if (move) {
     
       // Grenzen festlegen, damit das Rechteck nicht aus dem Canvas herausgeschoben wird
