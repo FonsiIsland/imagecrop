@@ -4,7 +4,7 @@ var input;
 
 // https://codepen.io/DanielHarty/details/vRRxxL
 
-let cropMaskRatios = [[16,9],[20,10],[10,10],[36,11],[27,6]]
+let cropMaskRatios = [[16,9],[20,10],[10,10],[36,11],[27,6],[8,10]]
 let selectedRatioIndex = 0;
 let maskScale = 1;
 let maskScaleStop = false;
