@@ -2,27 +2,33 @@ var originalImg;
 var mimicedImg;
 var input;
 
-// https://codepen.io/DanielHarty/details/vRRxxL
+const debug = false;
 
-let cropMaskRatios = [[16, 9], [9, 16], [20, 10], [10, 10], [36, 11], [27, 6], [8, 10]]
+let cropMaskRatios = [
+  [16, 9],
+  [9, 16],
+  [20, 10],
+  [10, 10],
+  [36, 11],
+  [27, 6],
+  [8, 10],
+];
 let selectedRatioIndex = 0;
 let maskScale = 1;
-let maskScaleStop = false;
-let resizeFactor = 1;
+
+let maskScaleUpStop = false;
+let maskScaleDownStop = false;
 
 let zoomScale = 1;
 
-let posX = 200; // Startposition X
-let posY = 200; // Startposition Y
-let rectWidth = 10;
-let rectHeight = 10;
-let move = false;
-let resizeGrab = { top: false, bottom: false, left: false, right: false, startPos: undefined, scale: 1 }
-let offsetX = 0;
-let offsetY = 0;
+let posX = 0; // Startposition X
+let posY = 0; // Startposition Y
 
-let offsetResizeX = 0;
-let offsetResizeY = 0;
+let frameWidth = 200;
+let frameHeight = 100;
+
+var dynFrameWidth = frameWidth;
+var dynFrameHeight = frameHeight;
 
 let imageLoading = true;
 
@@ -30,22 +36,38 @@ var defaulCanvasWidth = 1200;
 var canvasWidth;
 
 var limitExport = true;
-var imageName = "Scaled Image.jpg";
+var imageName = 'Scaled Image.jpg';
 var croppedImage;
+
+var frameBorderThickness = 5;
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1 MB in Bytes
 const QUALITY = 0.8; // JPEG-Qualität
 
+var moveGrab = false;
+var moveGrabState = {
+  mOffX: 0,
+  mOffY: 0,
+  factorOffX: 0,
+  factorOffY: 0,
+};
 
-//height of our horizontal slice
-var sliceHeight = 10;
+var resizeGrab = false;
+var resizeGrabState = {
+  state: 'none',
+  mPosX: 0,
+  mPosY: 0,
+  mOffX: 0,
+  mOffY: 0,
+  posX: 0,
+  posY: 0,
+  frameWidth: 0,
+  frameHeight: 0,
+};
 
-//the maximum x-offset we will apply to each slice
-var offsetMax = 20;
+var minFrameSize = 100;
 
-function preload() {
-  //img = loadImage('cat.jpg');
-}
+function preload() {}
 
 function setup() {
   var canvas = createCanvas(0, 0);
@@ -54,31 +76,19 @@ function setup() {
   input = createFileInput(handleImage);
   input.elt.style.display = 'none';
 
-  //input = document.createElement('input');
-  //input.type = 'file';
-  //input.style.display='none';
-
-  // input.onchange = e => { 
-  //    var file = e.target.files[0]; 
-  //    handleImage(file);
-  // }
-
-  document.getElementById("zoomScaleAdd").disabled = true;
-  document.getElementById("zoomScaleRemove").disabled = true;
-  document.getElementById("filedownload").disabled = true;
-  document.querySelectorAll('.mdc-radio__native-control').forEach((radio) => radio.disabled = true);
-  document.querySelectorAll('.mdc-checkbox__native-control').forEach((radio) => radio.disabled = true);
-
-  //let croped = img.get(100, 100, img.width-100, img.height-100);
-  //image(croped, 100,100);  
+  document.getElementById('zoomScaleAdd').disabled = true;
+  document.getElementById('zoomScaleRemove').disabled = true;
+  document.getElementById('filedownload').disabled = true;
+  document.querySelectorAll('.mdc-radio__native-control').forEach((radio) => (radio.disabled = true));
+  document.querySelectorAll('.mdc-checkbox__native-control').forEach((radio) => (radio.disabled = true));
 
   updateOverallScale();
-
+  changeMask(0);
 }
 
 const openInput = () => {
   input.elt.click();
-}
+};
 
 function draw() {
   background(color('#f5f0f0'));
@@ -87,127 +97,181 @@ function draw() {
 
   // Draw the image if loaded.
   if (originalImg && !imageLoading) {
-
     mimicedImg = originalImg;
 
+    resizeCanvas(canvasWidth, Math.round((mimicedImg.height / mimicedImg.width) * canvasWidth));
+    image(mimicedImg, 0, 0, 1 * width, (1 * mimicedImg.height * width) / mimicedImg.width);
 
-    //if(mimicedImg.width > canvasWidth){
-    //resizeCanvas(img.width,img.height)
-    resizeCanvas(canvasWidth, mimicedImg.height / mimicedImg.width * canvasWidth);
-    //image(img, 0, 0, img.width, img.height);
+    drawSelectionFrame(posX, posY, width, height, dynFrameWidth, dynFrameHeight, frameBorderThickness);
+    changeCursor(posX, posY, dynFrameWidth, dynFrameHeight, frameBorderThickness);
 
-    image(mimicedImg, 0, 0, 1 * width, 1 * mimicedImg.height * width / mimicedImg.width);
+    if (moveGrab) {
+      if (debug) text(moveGrab + ' | ' + JSON.stringify(moveGrabState), 5, 45);
+      translateFrameTo(mouseX - (moveGrabState.mOffX + moveGrabState.factorOffX), mouseY - (moveGrabState.mOffY + moveGrabState.factorOffY));
+      cursor('grab');
+    } else if (resizeGrab) {
+      switch (resizeGrabState.state) {
+        case 'topleft': {
+          cursor('nwse-resize');
 
-    //img.resize(1000, 0);
-    //}
+          const { newWidth, newHeight } = calcNewDim(true, resizeGrabState.mPosX, resizeGrabState.frameWidth);
+          translateFrameTo(resizeGrabState.posX - (newWidth - resizeGrabState.frameWidth), resizeGrabState.posY - (newHeight - resizeGrabState.frameHeight));
+          resizeFrameToValue(newWidth, newHeight);
 
+          break;
+        }
+        case 'topright': {
+          cursor('nesw-resize');
 
+          const { newWidth, newHeight } = calcNewDim(true, resizeGrabState.mPosX, resizeGrabState.frameWidth, true);
+          translateFrameTo(resizeGrabState.posX, resizeGrabState.posY - (newHeight - resizeGrabState.frameHeight));
+          resizeFrameToValue(newWidth, newHeight);
 
-    rectWidth = 10 * cropMaskRatios[selectedRatioIndex][0] * Math.round((zoomScale * maskScale * resizeGrab.scale) * 100) / 100;
-    rectHeight = 10 * cropMaskRatios[selectedRatioIndex][1] * Math.round((zoomScale * maskScale * resizeGrab.scale) * 100) / 100;
+          break;
+        }
+        case 'bottomleft': {
+          cursor('nesw-resize');
 
+          const { newWidth, newHeight } = calcNewDim(true, resizeGrabState.mPosX, resizeGrabState.frameWidth);
+          translateFrameTo(resizeGrabState.posX - (newWidth - resizeGrabState.frameWidth), resizeGrabState.posY);
+          resizeFrameToValue(newWidth, newHeight);
 
-    if (rectWidth >= width) {
-      rectWidth = width;
-      rectHeight = rectWidth / cropMaskRatios[selectedRatioIndex][0] * cropMaskRatios[selectedRatioIndex][1];
+          break;
+        }
+        case 'bottomright': {
+          cursor('nwse-resize');
 
-      maskScaleStop = true;
-    }
+          const { newWidth, newHeight } = calcNewDim(true, resizeGrabState.mPosX, resizeGrabState.frameWidth, true);
+          translateFrameTo(resizeGrabState.posX, resizeGrabState.posY);
+          resizeFrameToValue(newWidth, newHeight);
 
-    if (rectHeight >= height) {
-      rectHeight = height;
-      rectWidth = rectHeight / cropMaskRatios[selectedRatioIndex][1] * cropMaskRatios[selectedRatioIndex][0];
+          break;
+        }
+        case 'top': {
+          cursor('ns-resize');
 
-      maskScaleStop = true;
-    }
+          const { newWidth, newHeight } = calcNewDim(false, resizeGrabState.mPosY, resizeGrabState.frameHeight);
+          translateFrameTo(resizeGrabState.posX, resizeGrabState.posY - (newHeight - resizeGrabState.frameHeight));
+          resizeFrameToValue(newWidth, newHeight);
 
-    if (rectWidth < width && rectHeight < height)
-      maskScaleStop = false;
+          break;
+        }
+        case 'bottom': {
+          cursor('ns-resize');
 
+          const { newWidth, newHeight } = calcNewDim(false, resizeGrabState.mPosY, resizeGrabState.frameHeight, true);
+          translateFrameTo(resizeGrabState.posX, resizeGrabState.posY);
+          resizeFrameToValue(newWidth, newHeight);
 
-    // Koordinaten des sichtbaren Rechtecks
-    let rectX = Math.round(posX - (rectWidth / 2)) // X-Position des Rechtecks
-    let rectY = Math.round(posY - (rectHeight / 2)) // Y-Position des Rechtecks
+          break;
+        }
+        case 'left': {
+          cursor('ew-resize');
 
-    //console.log("x: " + rectX + " y: " +rectY + " | w: " + rectWidth +" h: " + rectHeight)
+          const { newWidth, newHeight } = calcNewDim(true, resizeGrabState.mPosX, resizeGrabState.frameWidth);
+          translateFrameTo(resizeGrabState.posX - (newWidth - resizeGrabState.frameWidth), resizeGrabState.posY);
+          resizeFrameToValue(newWidth, newHeight);
 
-    // Zeichne das graue Overlay, aber spare das Rechteck aus
-    noStroke();
-    fill(50, 50, 50, 200); // Dunkelgrau mit Transparenz
-    rect(0, 0, width, rectY); // Oberhalb des sichtbaren Bereichs
-    rect(0, rectY, rectX, rectHeight); // Links vom sichtbaren Bereich
-    rect(rectX + rectWidth, rectY, width - (rectX + rectWidth), rectHeight); // Rechts vom sichtbaren Bereich
-    rect(0, rectY + rectHeight, width, height - (rectY + rectHeight)); // Unterhalb des sichtbaren Bereichs
+          break;
+        }
+        case 'right': {
+          cursor('ew-resize');
 
-    fill(color('#cb99c9')); // Dunkelgrau mit Transparenz
-    rect(rectX, rectY - 2, rectWidth, 2); // Oben
-    rect(rectX, rectY + rectHeight, rectWidth, 2); // Unten
+          const { newWidth, newHeight } = calcNewDim(true, resizeGrabState.mPosX, resizeGrabState.frameWidth, true);
+          translateFrameTo(resizeGrabState.posX, resizeGrabState.posY);
+          resizeFrameToValue(newWidth, newHeight);
 
-    rect(rectX - 2, rectY - 2, 2, rectHeight + 4); // Links
-    rect(rectX + rectWidth, rectY - 2, 2, rectHeight + 4); // Rechts
-
-
-    cursor('default')
-
-    if (mouseX > rectX && mouseX < rectX + rectWidth && mouseY > rectY && mouseY < rectY + rectHeight) {
-      cursor('grab')
-    } else if (mouseX > rectX && mouseX < rectX + rectWidth) {
-      if (mouseY > rectY - 2 && mouseY < rectY) {
-        cursor('row-resize');
-      } else if (mouseY > rectY + rectHeight && mouseY < rectY + rectHeight + 2) {
-        cursor('row-resize');
+          break;
+        }
+        default: {
+          cursor('default');
+          break;
+        }
       }
-    } else if (mouseY > rectY && mouseY < rectY + rectHeight) {
-      if (mouseX > rectX - 2 && mouseX < rectX) {
-        cursor('col-resize');
-      } else if (mouseX > rectX + rectWidth && mouseX < rectX + rectWidth + 2) {
-        cursor('col-resize');
-      }
     }
 
-    // if (resizeGrab.top) {
-    //   console.log("Diff: " + (mouseY - resizeGrab.startPos));
-
-    // }
-
-    if (move) {
-
-      // Grenzen festlegen, damit das Rechteck nicht aus dem Canvas herausgeschoben wird
-      posX = constrain(mouseX - offsetX, (rectWidth / 2), width - (rectWidth / 2)); // Begrenzung auf Canvas-Breite
-      posY = constrain(mouseY - offsetY, (rectHeight / 2), height - (rectHeight / 2)); // Begrenzung auf Canvas-Höhe
-    } else {
-      posX = constrain(posX, (rectWidth / 2), width - (rectWidth / 2)); // Begrenzung auf Canvas-Breite
-      posY = constrain(posY, (rectHeight / 2), height - (rectHeight / 2)); // Begrenzung auf Canvas-Höhe
-    }
+    if (debug) text('mX: ' + Math.round(mouseX * 100) / 100 + ' mY: ' + Math.round(mouseY * 100) / 100 + ' | pX: ' + posX + ' pY: ' + posY + ' | frameW: ' + dynFrameWidth + ' frameH: ' + dynFrameHeight, 5, 15);
+    if (debug) text(resizeGrab + ' | ' + JSON.stringify(resizeGrabState), 5, 30);
   }
 }
 
+const drawSelectionFrame = (posX, posY, width, height, frameWidth, frameHeight, frameBorderThickness) => {
+  // Draw the selection frame over the image
+  noStroke();
+  fill(50, 50, 50, 200); // Dark gray with transparency
+  rect(0, 0, width, posY); // Top Area
+  rect(0, posY, posX, frameHeight); // Left Area
+  rect(posX + frameWidth, posY, width - (posX + frameWidth), frameHeight); // Right Area
+  rect(0, posY + frameHeight, width, height - (posY + frameHeight)); // Bottom Area
+
+  fill(color('#cb99c9')); // Frame Primary Color
+  rect(posX, posY - frameBorderThickness, frameWidth, frameBorderThickness); // Top
+  rect(posX, posY + frameHeight, frameWidth, frameBorderThickness); // Bottom
+  rect(posX - frameBorderThickness, posY - frameBorderThickness, frameBorderThickness, frameHeight + frameBorderThickness * 2); // Left
+  rect(posX + frameWidth, posY - frameBorderThickness, frameBorderThickness, frameHeight + frameBorderThickness * 2); // Right
+};
+
+const changeCursor = (posX, posY, frameWidth, frameHeight, frameBorderThickness) => {
+  cursor('default');
+
+  if (mouseX > posX && mouseX < posX + frameWidth && mouseY > posY && mouseY < posY + frameHeight) {
+    cursor('grab');
+  } else if (mouseX > posX && mouseX < posX + frameWidth) {
+    if (mouseY > posY - frameBorderThickness && mouseY < posY) {
+      cursor('ns-resize'); // Top
+    } else if (mouseY > posY + frameHeight && mouseY < posY + frameHeight + frameBorderThickness) {
+      cursor('ns-resize'); // Bottom
+    }
+  } else if (mouseY > posY && mouseY < posY + frameHeight) {
+    if (mouseX > posX - frameBorderThickness && mouseX < posX) {
+      cursor('ew-resize'); // Left
+    } else if (mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
+      cursor('ew-resize'); // Right
+    }
+  } else {
+    if (mouseY > posY - frameBorderThickness && mouseY < posY && mouseX > posX - frameBorderThickness && mouseX < posX) {
+      cursor('nwse-resize'); // Top Left
+    } else if (mouseY > posY - frameBorderThickness && mouseY < posY && mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
+      cursor('nesw-resize'); // Top Right
+    } else if (mouseY > posY + frameHeight && mouseX > posX - frameBorderThickness && mouseX < posX) {
+      cursor('nesw-resize'); // Bottom Left
+    } else if (mouseY > posY + frameHeight && mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
+      cursor('nwse-resize'); // Bottom Right
+    }
+  }
+};
+
 const updateOverallScale = () => {
   let oldCavnasWidth = canvasWidth;
-  canvasWidth = (windowWidth / 1920 * defaulCanvasWidth) * zoomScale;
+  canvasWidth = Math.round((windowWidth / 1920) * defaulCanvasWidth * zoomScale);
 
-  posX = posX / oldCavnasWidth * canvasWidth;
+  if (mimicedImg) {
+    posX = Math.round((posX / oldCavnasWidth) * canvasWidth);
+    posY = Math.round((posY / oldCavnasWidth) * canvasWidth);
 
-  if (mimicedImg)
-    posY = posY / (mimicedImg.height / mimicedImg.width * oldCavnasWidth) * (mimicedImg.height / mimicedImg.width * canvasWidth);
+    frameWidth = Math.round((dynFrameWidth = (frameWidth / oldCavnasWidth) * canvasWidth));
+    frameHeight = Math.round((dynFrameHeight = (frameHeight / oldCavnasWidth) * canvasWidth));
+  }
 
+  //posX = (posX / oldCavnasWidth) * canvasWidth;
+
+  //if (mimicedImg) posY = (posY / ((mimicedImg.height / mimicedImg.width) * oldCavnasWidth)) * ((mimicedImg.height / mimicedImg.width) * canvasWidth);
 
   // change mask size on window resize
-
-}
+};
 
 const setOverallScale = (relativeScalefactor) => {
   if (relativeScalefactor > 0) {
-    document.getElementById("zoomScaleAdd").disabled = zoomScale > 1.0;
-    document.getElementById("zoomScaleRemove").disabled = false;
+    document.getElementById('zoomScaleAdd').disabled = zoomScale > 1.0;
+    document.getElementById('zoomScaleRemove').disabled = false;
 
     if (zoomScale < 1.2) {
       zoomScale += relativeScalefactor;
       updateOverallScale();
     }
   } else {
-    document.getElementById("zoomScaleRemove").disabled = zoomScale < 0.7;
-    document.getElementById("zoomScaleAdd").disabled = false;
+    document.getElementById('zoomScaleRemove').disabled = zoomScale < 0.7;
+    document.getElementById('zoomScaleAdd').disabled = false;
 
     if (zoomScale > 0.5) {
       zoomScale += relativeScalefactor;
@@ -215,58 +279,81 @@ const setOverallScale = (relativeScalefactor) => {
     }
   }
 
-  document.getElementById('zoomScaleLabel').innerHTML = `${Math.round(zoomScale * 100)}%`
-}
+  document.getElementById('zoomScaleLabel').innerHTML = `${Math.round(zoomScale * 100)}%`;
+};
 
 function windowResized() {
   updateOverallScale();
 }
 
 function mousePressed() {
-  let rectX = Math.round(posX - (rectWidth / 2));
-  let rectY = Math.round(posY - (rectHeight / 2));
-
-  if (mouseX > rectX && mouseX < rectX + rectWidth && mouseY > rectY && mouseY < rectY + rectHeight) {
-    move = true;
-
-    offsetX = mouseX - posX;
-    offsetY = mouseY - posY;
-
-  } else if (mouseX > rectX && mouseX < rectX + rectWidth) {
-    if (mouseY > rectY - 2 && mouseY < rectY) {
-      resizeGrab = { ...resizeGrab, top: true, startPos: mouseY }
-    } else if (mouseY > rectY + rectHeight && mouseY < rectY + rectHeight + 2) {
-      resizeGrab = { ...resizeGrab, bottom: true, startPos: mouseY }
+  if (mouseX > posX && mouseX < posX + dynFrameWidth && mouseY > posY && mouseY < posY + dynFrameHeight) {
+    moveGrab = true;
+    moveGrabState = { mOffX: mouseX - posX, mOffY: mouseY - posY, factorOffX: 0, factorOffY: 0 };
+  } else if (mouseX > posX && mouseX < posX + dynFrameWidth) {
+    if (mouseY > posY - frameBorderThickness && mouseY < posY) {
+      setResizeGrab('top', mouseX, mouseY);
+    } else if (mouseY > posY + dynFrameHeight && mouseY < posY + dynFrameHeight + frameBorderThickness) {
+      setResizeGrab('bottom', mouseX, mouseY);
     }
-  } else if (mouseY > rectY && mouseY < rectY + rectHeight) {
-    if (mouseX > rectX - 2 && mouseX < rectX) {
-      resizeGrab = { ...resizeGrab, left: true, startPos: mouseX }
-    } else if (mouseX > rectX + rectWidth && mouseX < rectX + rectWidth + 2) {
-      resizeGrab = { ...resizeGrab, right: true, startPos: mouseX }
+  } else if (mouseY > posY && mouseY < posY + dynFrameHeight) {
+    if (mouseX > posX - frameBorderThickness && mouseX < posX) {
+      setResizeGrab('left', mouseX, mouseY);
+    } else if (mouseX > posX + dynFrameWidth && mouseX < posX + dynFrameWidth + frameBorderThickness) {
+      setResizeGrab('right', mouseX, mouseY);
+    }
+  } else {
+    if (mouseY > posY - frameBorderThickness && mouseY < posY && mouseX > posX - frameBorderThickness && mouseX < posX) {
+      setResizeGrab('topleft', mouseX, mouseY);
+    } else if (mouseY > posY - frameBorderThickness && mouseY < posY && mouseX > posX + dynFrameWidth && mouseX < posX + dynFrameWidth + frameBorderThickness) {
+      setResizeGrab('topright', mouseX, mouseY);
+    } else if (mouseY > posY + dynFrameHeight && mouseX > posX - frameBorderThickness && mouseX < posX) {
+      setResizeGrab('bottomleft', mouseX, mouseY);
+    } else if (mouseY > posY + dynFrameHeight && mouseX > posX + dynFrameWidth && mouseX < posX + dynFrameWidth + frameBorderThickness) {
+      setResizeGrab('bottomright', mouseX, mouseY);
     }
   }
 }
 
-
 function mouseReleased() {
-  move = false;
-  resizeGrab = { top: false, bottom: false, left: false, right: false, startPos: undefined, scale: 1 }
+  moveGrab = false;
+  moveGrabState = {
+    mOffX: 0,
+    mOffY: 0,
+    factorOffX: 0,
+    factorOffY: 0,
+  };
+
+  resizeGrab = false;
+  resizeGrabState = { state: '', mPosX: 0, mPosY: 0, mOffX: 0, mOffY: 0, posX: 0, posY: 0, frameWidth: 0, frameHeight: 0 };
+
+  frameWidth = dynFrameWidth;
+  frameHeight = dynFrameHeight;
 }
 
 function mouseWheel(event) {
   if (originalImg) {
-    if (mouseX > 0 && mouseX <= canvasWidth && mouseY > 0 && mouseY <= (originalImg.height / originalImg.width * canvasWidth)) {
+    if (mouseX > 0 && mouseX <= canvasWidth && mouseY > 0 && mouseY <= (originalImg.height / originalImg.width) * canvasWidth) {
       if (event.delta < 0) {
-        if (maskScale > 1.0)
-          maskScale -= 0.05;
+        if (maskScaleDownStop) return;
+        maskScale -= 0.05;
       } else {
-        if (maskScaleStop) return;
-
-        if (maskScale < 20)
-          maskScale += 0.05;
+        if (maskScaleUpStop) return;
+        maskScale += 0.05;
       }
 
-      console.log(maskScale);
+      var oldWidth = dynFrameWidth;
+      var oldHeight = dynFrameHeight;
+      resizeFrameByFactor(maskScale);
+
+      if (moveGrab) {
+        moveGrabState = { ...moveGrabState, factorOffX: moveGrabState.factorOffX + (dynFrameWidth - oldWidth) / 2, factorOffY: moveGrabState.factorOffY + (dynFrameHeight - oldHeight) / 2 };
+      } else {
+        translateFrameTo(posX - (dynFrameWidth - oldWidth) / 2, posY - (dynFrameHeight - oldHeight) / 2);
+      }
+
+      if (debug) console.log(maskScale);
+      maskScale = 1;
 
       return false;
     }
@@ -274,18 +361,18 @@ function mouseWheel(event) {
 }
 
 function handleImage(file) {
-  console.log(file)
+  console.log(file);
 
   if (file.type === 'image') {
     imageLoading = true;
 
-    imageName = file.name.replace(".jpeg", "").replace(".png", "").replace(".jpg", "") + " - Skaliert.jpg";
+    imageName = file.name.replace('.jpeg', '').replace('.png', '').replace('.jpg', '') + ' - Skaliert.jpg';
 
-    document.getElementById("zoomScaleAdd").disabled = true;
-    document.getElementById("zoomScaleRemove").disabled = true;
-    document.getElementById("filedownload").disabled = true;
-    document.querySelectorAll('.mdc-radio__native-control').forEach((radio) => radio.disabled = true);
-    document.querySelectorAll('.mdc-checkbox__native-control').forEach((radio) => radio.disabled = true);
+    document.getElementById('zoomScaleAdd').disabled = true;
+    document.getElementById('zoomScaleRemove').disabled = true;
+    document.getElementById('filedownload').disabled = true;
+    document.querySelectorAll('.mdc-radio__native-control').forEach((radio) => (radio.disabled = true));
+    document.querySelectorAll('.mdc-checkbox__native-control').forEach((radio) => (radio.disabled = true));
 
     originalImg = loadImage(file.data, () => handleImageLoaded());
   } else {
@@ -293,74 +380,69 @@ function handleImage(file) {
   }
 }
 
-function changeMask(index) {
-  selectedRatioIndex = index;
-  maskScale = 1;
-}
-
 function handleImageLoaded() {
   imageLoading = false;
 
-  document.getElementById("zoomScaleAdd").disabled = false;
-  document.getElementById("zoomScaleRemove").disabled = false;
-  document.getElementById("filedownload").disabled = false;
-  document.querySelectorAll('.mdc-radio__native-control').forEach((radio) => radio.disabled = false);
-  document.querySelectorAll('.mdc-checkbox__native-control').forEach((radio) => radio.disabled = false);
+  document.getElementById('zoomScaleAdd').disabled = false;
+  document.getElementById('zoomScaleRemove').disabled = false;
+  document.getElementById('filedownload').disabled = false;
+  document.querySelectorAll('.mdc-radio__native-control').forEach((radio) => (radio.disabled = false));
+  document.querySelectorAll('.mdc-checkbox__native-control').forEach((radio) => (radio.disabled = false));
 
-  posX = canvasWidth / 2
-  posY = (originalImg.height / originalImg.width * canvasWidth) / 2
-  maskScale = 1
+  maskScale = 1;
+  dynFrameWidth = frameWidth = minFrameSize;
+  dynFrameHeight = frameHeight = Math.round((minFrameSize / getCurrRatio(0)) * getCurrRatio(1));
+  posX = Math.round(canvasWidth / 2 - frameWidth / 2);
+  posY = Math.round(((originalImg.height / originalImg.width) * canvasWidth) / 2 - frameHeight / 2);
 }
 
 const downloadFile = () => {
   let currentBlob;
 
   var factor = originalImg.width / canvasWidth;
-  croppedImage = originalImg.get((posX - rectWidth / 2) * factor, (posY - rectHeight / 2) * factor, rectWidth * factor, rectHeight * factor);
+  croppedImage = originalImg.get(posX * factor, posY * factor, frameWidth * factor, frameHeight * factor);
 
   if (limitExport) {
-
     for (var i = 0; i <= 5; i++) {
-      console.log("Iteration Count: " + i)
+      console.log('Iteration Count: ' + i);
 
-      const dataUrl = croppedImage.canvas.toDataURL("image/jpeg", QUALITY);
+      const dataUrl = croppedImage.canvas.toDataURL('image/jpeg', QUALITY);
       currentBlob = dataURItoBlob(dataUrl);
       console.log(`Blob-Größe: ${currentBlob.size} Bytes`);
 
       if (currentBlob.size > MAX_FILE_SIZE) {
         resizeImage(currentBlob.size, croppedImage);
       } else {
-        console.log("Finished")
-        console.log(currentBlob.size)
+        console.log('Finished');
+        console.log(currentBlob.size);
         break;
       }
     }
-
   } else {
-    const dataUrl = croppedImage.canvas.toDataURL("image/jpeg", QUALITY);
+    const dataUrl = croppedImage.canvas.toDataURL('image/jpeg', QUALITY);
     currentBlob = dataURItoBlob(dataUrl);
     console.log(`Blob-Größe: ${currentBlob.size} Bytes`);
   }
 
   saveBlob(currentBlob, imageName);
 
-  console.log("Bild finalisiert!");
+  console.log('Bild finalisiert!');
+};
+
+function changeMask(index) {
+  maskScaleUpStop = false;
+  maskScaleDownStop = false;
+  selectedRatioIndex = index;
+  maskScale = 1;
+
+  dynFrameWidth = frameWidth = minFrameSize * maskScale;
+  dynFrameHeight = frameHeight = Math.round((minFrameSize / getCurrRatio(0)) * getCurrRatio(1) * maskScale);
+
+  posX = Math.round(width / 2 - frameWidth / 2);
+  posY = Math.round(height / 2 - frameHeight / 2);
 }
 
-// function keyPressed() {
-//   if(key === 'b') {
-//     downloadFile();
-//   }else if(key==='k'){
-//     let currentBlob;
-
-//     var factor = originalImg.width/canvasWidth;
-//     croppedImage = originalImg.get((posX - rectWidth / 2)*factor, (posY - rectHeight / 2)*factor, rectWidth*factor, rectHeight*factor);
-
-//     const dataUrl = croppedImage.canvas.toDataURL("image/jpeg", QUALITY);
-//     currentBlob = dataURItoBlob(dataUrl);
-//     console.log(`Blob-Größe: ${currentBlob.size} Bytes`);
-//   }
-// }
+const getCurrRatio = (index) => cropMaskRatios[selectedRatioIndex][index];
 
 const resizeImage = (fileSize, img) => {
   let scaleFactor = Math.sqrt(MAX_FILE_SIZE / fileSize);
@@ -375,11 +457,11 @@ const resizeImage = (fileSize, img) => {
   img.resize(newWidth, newHeight);
 
   return { newWidth, newHeight };
-}
+};
 
 const dataURItoBlob = (dataURI) => {
   var byteString = atob(dataURI.split(',')[1]);
-  var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0]
+  var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
   var ab = new ArrayBuffer(byteString.length);
   var ia = new Uint8Array(ab);
   for (var i = 0; i < byteString.length; i++) {
@@ -387,21 +469,89 @@ const dataURItoBlob = (dataURI) => {
   }
   var blob = new Blob([ab], { type: mimeString });
   return blob;
-}
+};
 
 const saveBlob = (blob, fileName) => {
-  var a = document.createElement("a");
+  var a = document.createElement('a');
   document.body.appendChild(a);
-  a.style = "display: none";
+  a.style = 'display: none';
 
   var url = URL.createObjectURL(blob);
   a.href = url;
   a.download = fileName;
   a.click();
   window.URL.revokeObjectURL(url);
-}
+};
 
+// const toggleExportSize = (val) => {
+//   limitExport = val.checked;
+// }
 
-const toggleExportSize = (val) => {
-  limitExport = val.checked;
-}
+const setResizeGrab = (state, mPosX, mPosY) => {
+  resizeGrab = true;
+  resizeGrabState = { state, mPosX: Math.round(mPosX), mPosY: Math.round(mPosY), mOffX: Math.round(mPosX - posX), mOffY: Math.round(mPosY) - posY, posX, posY, frameWidth, frameHeight };
+};
+
+const translateFrameTo = (newPosX, newPosY) => {
+  posX = Math.round(constrain(newPosX, 0, width - dynFrameWidth));
+  posY = Math.round(constrain(newPosY, 0, height - dynFrameHeight));
+};
+
+const translateFrameBy = (diffX, diffY) => {
+  posX = Math.round(constrain(posX + diffX, 0, width - dynFrameWidth));
+  posY = Math.round(constrain(posY + diffY, 0, height - dynFrameHeight));
+};
+
+const resizeFrameByFactor = (factor) => {
+  if (frameWidth * factor > width) {
+    frameWidth = dynFrameWidth = width;
+    frameHeight = dynFrameHeight = Math.round((frameWidth / getCurrRatio(0)) * getCurrRatio(1));
+
+    maskScaleUpStop = true;
+  } else if (frameHeight * factor > height) {
+    frameHeight = dynFrameHeight = height;
+    frameWidth = dynFrameWidth = Math.round((frameHeight * getCurrRatio(0)) / getCurrRatio(1));
+
+    maskScaleUpStop = true;
+  } else if (frameWidth * factor < minFrameSize) {
+    frameWidth = dynFrameWidth = minFrameSize;
+    frameHeight = dynFrameHeight = Math.round((minFrameSize / getCurrRatio(0)) * getCurrRatio(1));
+
+    maskScaleDownStop = true;
+  } else if (frameHeight * factor < (minFrameSize / getCurrRatio(0)) * getCurrRatio(1)) {
+    frameHeight = dynFrameHeight = Math.round((minFrameSize / getCurrRatio(0)) * getCurrRatio(1));
+    frameWidth = dynFrameWidth = minFrameSize;
+
+    maskScaleDownStop = true;
+  } else {
+    frameWidth = dynFrameWidth = Math.round(frameWidth * factor);
+    frameHeight = dynFrameHeight = Math.round(frameHeight * factor);
+
+    maskScaleUpStop = false;
+    maskScaleDownStop = false;
+  }
+};
+
+const resizeFrameByValue = (valX, valY) => {
+  dynFrameWidth = frameWidth + valX;
+  dynFrameHeight = frameHeight + valY;
+};
+
+const resizeFrameToValue = (valX, valY) => {
+  dynFrameWidth = valX;
+  dynFrameHeight = valY;
+
+  maskScaleUpStop = maskScaleDownStop = false;
+};
+
+const calcNewDim = (primaryX, refMPos, refSize, inverted = false) => {
+  if (primaryX) {
+    var newWidth = Math.round(max(refSize + (refMPos - mouseX) * (inverted ? -1 : 1), minFrameSize));
+    var newHeight = Math.round(max((newWidth / getCurrRatio(0)) * getCurrRatio(1), (minFrameSize / getCurrRatio(0)) * getCurrRatio(1)));
+  } else {
+    var newHeight = Math.round(max(refSize + (refMPos - mouseY) * (inverted ? -1 : 1), (minFrameSize / getCurrRatio(0)) * getCurrRatio(1)));
+    var newWidth = Math.round(max((newHeight * getCurrRatio(0)) / getCurrRatio(1), minFrameSize));
+  }
+
+  return { newWidth, newHeight };
+};
