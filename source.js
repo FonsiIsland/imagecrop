@@ -538,8 +538,16 @@ const resizeFrameByValue = (valX, valY) => {
 };
 
 const resizeFrameToValue = (valX, valY) => {
-  dynFrameWidth = valX;
-  dynFrameHeight = valY;
+  if (valX > width) {
+    dynFrameWidth = frameWidth = width;
+    dynFrameHeight = frameHeight = Math.round((width / getCurrRatio(0)) * getCurrRatio(1));
+  } else if (valY > height) {
+    dynFrameHeight = frameHeight = height;
+    dynFrameWidth = frameWidth = Math.round((height * getCurrRatio(0)) / getCurrRatio(1));
+  } else {
+    dynFrameWidth = valX;
+    dynFrameHeight = valY;
+  }
 
   maskScaleUpStop = maskScaleDownStop = false;
 };
