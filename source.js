@@ -4,6 +4,8 @@ var input;
 
 const debug = false;
 
+var newFrame = false;
+
 let cropMaskRatios = [
   [16, 9],
   [9, 16],
@@ -40,6 +42,7 @@ var imageName = 'Scaled Image.jpg';
 var croppedImage;
 
 var frameBorderThickness = 5;
+var newFrameBorderThickness = 2;
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1 MB in Bytes
 const QUALITY = 0.8; // JPEG-Qualität
@@ -198,45 +201,89 @@ function draw() {
 const drawSelectionFrame = (posX, posY, width, height, frameWidth, frameHeight, frameBorderThickness) => {
   // Draw the selection frame over the image
   noStroke();
-  fill(50, 50, 50, 200); // Dark gray with transparency
+  fill(50, 50, 50, 210); // Dark gray with transparency
   rect(0, 0, width, posY); // Top Area
   rect(0, posY, posX, frameHeight); // Left Area
   rect(posX + frameWidth, posY, width - (posX + frameWidth), frameHeight); // Right Area
   rect(0, posY + frameHeight, width, height - (posY + frameHeight)); // Bottom Area
 
-  fill(color('#cb99c9')); // Frame Primary Color
-  rect(posX, posY - frameBorderThickness, frameWidth, frameBorderThickness); // Top
-  rect(posX, posY + frameHeight, frameWidth, frameBorderThickness); // Bottom
-  rect(posX - frameBorderThickness, posY - frameBorderThickness, frameBorderThickness, frameHeight + frameBorderThickness * 2); // Left
-  rect(posX + frameWidth, posY - frameBorderThickness, frameBorderThickness, frameHeight + frameBorderThickness * 2); // Right
+  if (newFrame) {
+    fill(color('#ffffff')); // Frame Primary Color
+    stroke(color('#cb99c9'));
+    strokeWeight(3);
+    circle(posX, posY, newFrameBorderThickness * 5); // top left
+    circle(posX + frameWidth, posY, newFrameBorderThickness * 5); // top right
+    circle(posX, posY + frameHeight, newFrameBorderThickness * 5); // bottom left
+    circle(posX + frameWidth, posY + frameHeight, newFrameBorderThickness * 5); // bottom right
+
+    rect(posX + frameWidth / 2 - (newFrameBorderThickness * 15) / 2, posY - (newFrameBorderThickness * 3) / 2, newFrameBorderThickness * 15, newFrameBorderThickness * 3); // top
+    rect(posX + frameWidth / 2 - (newFrameBorderThickness * 15) / 2, posY + frameHeight - (newFrameBorderThickness * 3) / 2, newFrameBorderThickness * 15, newFrameBorderThickness * 3); // bottom
+
+    rect(posX - (newFrameBorderThickness * 3) / 2, posY + frameHeight / 2 - (newFrameBorderThickness * 15) / 2, newFrameBorderThickness * 3, newFrameBorderThickness * 15); // left
+    rect(posX + frameWidth - (newFrameBorderThickness * 3) / 2, posY + frameHeight / 2 - (newFrameBorderThickness * 15) / 2, newFrameBorderThickness * 3, newFrameBorderThickness * 15); // left
+  } else {
+    fill(color('#cb99c9')); // Frame Primary Color
+    rect(posX, posY - frameBorderThickness, frameWidth, frameBorderThickness); // Top
+    rect(posX, posY + frameHeight, frameWidth, frameBorderThickness); // Bottom
+    rect(posX - frameBorderThickness, posY - frameBorderThickness, frameBorderThickness, frameHeight + frameBorderThickness * 2); // Left
+    rect(posX + frameWidth, posY - frameBorderThickness, frameBorderThickness, frameHeight + frameBorderThickness * 2); // Right
+  }
 };
 
 const changeCursor = (posX, posY, frameWidth, frameHeight, frameBorderThickness) => {
   cursor('default');
 
-  if (mouseX > posX && mouseX < posX + frameWidth && mouseY > posY && mouseY < posY + frameHeight) {
-    cursor('grab');
-  } else if (mouseX > posX && mouseX < posX + frameWidth) {
-    if (mouseY > posY - frameBorderThickness && mouseY < posY) {
-      cursor('ns-resize'); // Top
-    } else if (mouseY > posY + frameHeight && mouseY < posY + frameHeight + frameBorderThickness) {
-      cursor('ns-resize'); // Bottom
-    }
-  } else if (mouseY > posY && mouseY < posY + frameHeight) {
-    if (mouseX > posX - frameBorderThickness && mouseX < posX) {
-      cursor('ew-resize'); // Left
-    } else if (mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
-      cursor('ew-resize'); // Right
+  if (newFrame) {
+    if (mouseX > posX && mouseX < posX + frameWidth && mouseY > posY && mouseY < posY + frameHeight) {
+      cursor('grab');
+    } else if (mouseX > posX && mouseX < posX + frameWidth) {
+      if (mouseY > posY - frameBorderThickness && mouseY < posY) {
+        cursor('ns-resize'); // Top
+      } else if (mouseY > posY + frameHeight && mouseY < posY + frameHeight + frameBorderThickness) {
+        cursor('ns-resize'); // Bottom
+      }
+    } else if (mouseY > posY && mouseY < posY + frameHeight) {
+      if (mouseX > posX - frameBorderThickness && mouseX < posX) {
+        cursor('ew-resize'); // Left
+      } else if (mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
+        cursor('ew-resize'); // Right
+      }
+    } else {
+      if (mouseY > posY - frameBorderThickness && mouseY < posY && mouseX > posX - frameBorderThickness && mouseX < posX) {
+        cursor('nwse-resize'); // Top Left
+      } else if (mouseY > posY - frameBorderThickness && mouseY < posY && mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
+        cursor('nesw-resize'); // Top Right
+      } else if (mouseY > posY + frameHeight && mouseY < posY + frameHeight + frameBorderThickness && mouseX > posX - frameBorderThickness && mouseX < posX) {
+        cursor('nesw-resize'); // Bottom Left
+      } else if (mouseY > posY + frameHeight && mouseY < posY + frameHeight + frameBorderThickness && mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
+        cursor('nwse-resize'); // Bottom Right
+      }
     }
   } else {
-    if (mouseY > posY - frameBorderThickness && mouseY < posY && mouseX > posX - frameBorderThickness && mouseX < posX) {
-      cursor('nwse-resize'); // Top Left
-    } else if (mouseY > posY - frameBorderThickness && mouseY < posY && mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
-      cursor('nesw-resize'); // Top Right
-    } else if (mouseY > posY + frameHeight && mouseX > posX - frameBorderThickness && mouseX < posX) {
-      cursor('nesw-resize'); // Bottom Left
-    } else if (mouseY > posY + frameHeight && mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
-      cursor('nwse-resize'); // Bottom Right
+    if (mouseX > posX && mouseX < posX + frameWidth && mouseY > posY && mouseY < posY + frameHeight) {
+      cursor('grab');
+    } else if (mouseX > posX && mouseX < posX + frameWidth) {
+      if (mouseY > posY - frameBorderThickness && mouseY < posY) {
+        cursor('ns-resize'); // Top
+      } else if (mouseY > posY + frameHeight && mouseY < posY + frameHeight + frameBorderThickness) {
+        cursor('ns-resize'); // Bottom
+      }
+    } else if (mouseY > posY && mouseY < posY + frameHeight) {
+      if (mouseX > posX - frameBorderThickness && mouseX < posX) {
+        cursor('ew-resize'); // Left
+      } else if (mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
+        cursor('ew-resize'); // Right
+      }
+    } else {
+      if (mouseY > posY - frameBorderThickness && mouseY < posY && mouseX > posX - frameBorderThickness && mouseX < posX) {
+        cursor('nwse-resize'); // Top Left
+      } else if (mouseY > posY - frameBorderThickness && mouseY < posY && mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
+        cursor('nesw-resize'); // Top Right
+      } else if (mouseY > posY + frameHeight && mouseY < posY + frameHeight + frameBorderThickness && mouseX > posX - frameBorderThickness && mouseX < posX) {
+        cursor('nesw-resize'); // Bottom Left
+      } else if (mouseY > posY + frameHeight && mouseY < posY + frameHeight + frameBorderThickness && mouseX > posX + frameWidth && mouseX < posX + frameWidth + frameBorderThickness) {
+        cursor('nwse-resize'); // Bottom Right
+      }
     }
   }
 };
@@ -400,7 +447,7 @@ const downloadFile = () => {
   let currentBlob;
 
   var factor = originalImg.width / canvasWidth;
-  croppedImage = originalImg.get(posX * factor, posY * factor, frameWidth * factor, frameHeight * factor);
+  croppedImage = originalImg.get(posX * factor, posY * factor, dynFrameWidth * factor, dynFrameHeight * factor);
 
   if (limitExport) {
     for (var i = 0; i <= 5; i++) {
@@ -483,9 +530,9 @@ const saveBlob = (blob, fileName) => {
   window.URL.revokeObjectURL(url);
 };
 
-// const toggleExportSize = (val) => {
-//   limitExport = val.checked;
-// }
+const toggleExportSize = (val) => {
+  limitExport = val.checked;
+};
 
 const setResizeGrab = (state, mPosX, mPosY) => {
   resizeGrab = true;
@@ -563,3 +610,9 @@ const calcNewDim = (primaryX, refMPos, refSize, inverted = false) => {
 
   return { newWidth, newHeight };
 };
+
+function keyPressed() {
+  if (keyIsDown(17) && keyIsDown(18) && keyCode === 70) {
+    newFrame = !newFrame;
+  }
+}
